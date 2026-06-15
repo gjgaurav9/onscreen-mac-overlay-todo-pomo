@@ -1,0 +1,8 @@
+# SwiftPM build artifacts
+.build/
+# Packaged app bundle (rebuild with ./build-app.sh)
+Pomodoro.app/
+# macOS
+.DS_Store
+# Vercel (unused here, kept for hygiene)
+.vercel
