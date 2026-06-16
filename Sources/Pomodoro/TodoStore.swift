@@ -17,11 +17,18 @@ struct TodoItem: Identifiable, Codable, Equatable {
 /// should support single-tasking (one clear "current" task), not become a second
 /// distraction to manage.
 final class TodoStore: ObservableObject {
-    @Published var items: [TodoItem] = []
+    @Published var items: [TodoItem] = [] { didSet { save() } }
 
     private let key = "todoItems"
 
     init() { load() }
+
+    /// Promote a task to the top so it becomes the "current" one.
+    func makeCurrent(_ id: UUID) {
+        guard let i = items.firstIndex(where: { $0.id == id }) else { return }
+        let item = items.remove(at: i)
+        items.insert(item, at: 0)
+    }
 
     /// The first unfinished task — the one to actually work on this session.
     var current: TodoItem? { items.first { !$0.done } }

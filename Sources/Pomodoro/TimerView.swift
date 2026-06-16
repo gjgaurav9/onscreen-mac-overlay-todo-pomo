@@ -7,10 +7,15 @@ import SwiftUI
 struct TimerView: View {
     @ObservedObject var engine: TimerEngine
     @ObservedObject var todos: TodoStore
+    /// Called when the user starts interacting with text (open drawer / focus field):
+    /// the app activates so paste, Cmd-V, and dictation tools (Wispr Flow) target the
+    /// task field. The passive timer never triggers this.
+    var onBeginEditing: () -> Void = {}
 
     @State private var hovering = false
     @State private var showTodos = false
     @State private var newTask = ""
+    @State private var dragging: TodoItem?
     @FocusState private var addFieldFocused: Bool
 
     private let width: CGFloat = 190
@@ -130,7 +135,10 @@ struct TimerView: View {
     private var tasksBar: some View {
         Button {
             withAnimation(.easeInOut(duration: 0.18)) { showTodos.toggle() }
-            if showTodos { addFieldFocused = true }
+            if showTodos {
+                onBeginEditing()
+                addFieldFocused = true
+            }
         } label: {
             HStack(spacing: 6) {
                 Image(systemName: "checklist")
@@ -175,6 +183,9 @@ struct TimerView: View {
                     .font(.system(size: 12))
                     .foregroundStyle(.white)
                     .focused($addFieldFocused)
+                    .onChange(of: addFieldFocused) { focused in
+                        if focused { onBeginEditing() }
+                    }
                     .onSubmit {
                         todos.add(newTask)
                         newTask = ""
@@ -191,8 +202,14 @@ struct TimerView: View {
                         ForEach(todos.items) { item in
                             TodoRow(item: item,
                                     accent: accent,
+                                    items: $todos.items,
+                                    dragging: $dragging,
                                     onToggle: { todos.toggle(item.id) },
-                                    onDelete: { todos.remove(item.id) })
+                                    onDelete: { todos.remove(item.id) },
+                                    onChoose: {
+                                        todos.makeCurrent(item.id)
+                                        withAnimation(.easeInOut(duration: 0.18)) { showTodos = false }
+                                    })
                         }
                     }
                 }
@@ -239,12 +256,15 @@ struct TimerView: View {
     }
 }
 
-/// One task row: checkbox + title, with a delete affordance on hover.
+/// One task row: checkbox + title, draggable to reorder, tap-to-choose, delete on hover.
 private struct TodoRow: View {
     let item: TodoItem
     let accent: Color
+    @Binding var items: [TodoItem]
+    @Binding var dragging: TodoItem?
     let onToggle: () -> Void
     let onDelete: () -> Void
+    let onChoose: () -> Void
 
     @State private var hovering = false
 
@@ -257,15 +277,21 @@ private struct TodoRow: View {
             }
             .buttonStyle(.plain)
 
+            // Tapping the title "chooses" this task (promotes it + collapses the drawer).
             Text(item.title)
                 .font(.system(size: 12))
                 .foregroundStyle(item.done ? Color.white.opacity(0.35) : Color.white.opacity(0.9))
                 .strikethrough(item.done, color: .white.opacity(0.35))
                 .lineLimit(1)
+                .contentShape(Rectangle())
+                .onTapGesture(perform: onChoose)
 
             Spacer(minLength: 2)
 
             if hovering {
+                Image(systemName: "line.3.horizontal")
+                    .font(.system(size: 9, weight: .bold))
+                    .foregroundStyle(.white.opacity(0.25))
                 Button(action: onDelete) {
                     Image(systemName: "xmark")
                         .font(.system(size: 9, weight: .bold))
@@ -276,8 +302,43 @@ private struct TodoRow: View {
         }
         .padding(.horizontal, 6)
         .padding(.vertical, 4)
-        .background(RoundedRectangle(cornerRadius: 6).fill(Color.white.opacity(hovering ? 0.05 : 0)))
+        .background(RoundedRectangle(cornerRadius: 6).fill(Color.white.opacity(rowHighlight)))
         .contentShape(Rectangle())
         .onHover { hovering = $0 }
+        .onDrag {
+            dragging = item
+            return NSItemProvider(object: item.id.uuidString as NSString)
+        }
+        .onDrop(of: ["public.text"],
+                delegate: TodoDropDelegate(item: item, items: $items, dragging: $dragging))
+    }
+
+    private var rowHighlight: Double {
+        if dragging?.id == item.id { return 0.12 }
+        return hovering ? 0.05 : 0
+    }
+}
+
+/// Reorders the list as a dragged row passes over others. Mutating `items` (a binding
+/// to the store's array) persists automatically via the store's didSet.
+private struct TodoDropDelegate: DropDelegate {
+    let item: TodoItem
+    @Binding var items: [TodoItem]
+    @Binding var dragging: TodoItem?
+
+    func dropUpdated(info: DropInfo) -> DropProposal? { DropProposal(operation: .move) }
+
+    func dropEntered(info: DropInfo) {
+        guard let dragging, dragging.id != item.id,
+              let from = items.firstIndex(where: { $0.id == dragging.id }),
+              let to = items.firstIndex(where: { $0.id == item.id }) else { return }
+        withAnimation(.easeInOut(duration: 0.15)) {
+            items.move(fromOffsets: IndexSet(integer: from), toOffset: to > from ? to + 1 : to)
+        }
+    }
+
+    func performDrop(info: DropInfo) -> Bool {
+        dragging = nil
+        return true
     }
 }

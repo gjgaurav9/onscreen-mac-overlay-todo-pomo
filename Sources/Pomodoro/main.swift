@@ -18,9 +18,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     private let margin: CGFloat = 24
 
     func applicationDidFinishLaunching(_ notification: Notification) {
+        buildMenu()
+
+        let root = TimerView(engine: engine, todos: todos,
+                             onBeginEditing: { [weak self] in self?.beginEditing() })
         // A hosting controller with .preferredContentSize makes the borderless panel
         // resize to fit the SwiftUI content as the to-do drawer opens and closes.
-        let controller = NSHostingController(rootView: TimerView(engine: engine, todos: todos))
+        let controller = NSHostingController(rootView: root)
         controller.sizingOptions = [.preferredContentSize]
 
         panel = OverlayPanel(contentRect: NSRect(x: 0, y: 0, width: 190, height: 190))
@@ -31,6 +35,43 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         panel.orderFrontRegardless()
 
         setupFocusLock()
+    }
+
+    /// Activate the app and key the panel so text input — paste, Cmd-V, and dictation
+    /// tools like Wispr Flow — lands in the task field. Only called when the user is
+    /// actually editing tasks; the passive timer never does this.
+    private func beginEditing() {
+        NSApp.activate(ignoringOtherApps: true)
+        panel.makeKeyAndOrderFront(nil)
+    }
+
+    /// A minimal main menu. The Edit menu's standard key-equivalents are what make
+    /// Cut/Copy/Paste/Select-All work in the task field (an accessory app with no menu
+    /// otherwise can't receive ⌘V/⌘C).
+    private func buildMenu() {
+        let mainMenu = NSMenu()
+
+        let appItem = NSMenuItem()
+        mainMenu.addItem(appItem)
+        let appMenu = NSMenu()
+        appMenu.addItem(withTitle: "Quit Pomodoro",
+                        action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q")
+        appItem.submenu = appMenu
+
+        let editItem = NSMenuItem()
+        mainMenu.addItem(editItem)
+        let editMenu = NSMenu(title: "Edit")
+        editMenu.addItem(withTitle: "Undo", action: Selector(("undo:")), keyEquivalent: "z")
+        editMenu.addItem(withTitle: "Redo", action: Selector(("redo:")), keyEquivalent: "Z")
+        editMenu.addItem(.separator())
+        editMenu.addItem(withTitle: "Cut", action: #selector(NSText.cut(_:)), keyEquivalent: "x")
+        editMenu.addItem(withTitle: "Copy", action: #selector(NSText.copy(_:)), keyEquivalent: "c")
+        editMenu.addItem(withTitle: "Paste", action: #selector(NSText.paste(_:)), keyEquivalent: "v")
+        editMenu.addItem(withTitle: "Select All",
+                         action: #selector(NSText.selectAll(_:)), keyEquivalent: "a")
+        editItem.submenu = editMenu
+
+        NSApp.mainMenu = mainMenu
     }
 
     // MARK: - Focus Lock wiring

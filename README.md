@@ -40,10 +40,21 @@ Or run straight from source: `swift run -c release`.
 
 Click the **task bar** under the timer to expand a small to-do drawer *below* the
 ring — never a full screen, never a separate window. Type a task and hit Enter; check
-items off; delete on hover. When collapsed, the bar shows your **current task** (the
-first unchecked one) so the thing you're meant to be doing stays glanceable — which
-supports single-tasking. Tasks persist across launches. The timer always stays the
-main, fixed element; the list just grows the panel downward.
+items off; delete on hover.
+
+- **Reorder by priority:** drag a task up or down to set its order.
+- **Choose a task:** tap a task's title to promote it to the top and collapse the
+  drawer back to the small view — so the timer + your chosen task are all you see.
+- When collapsed, the bar shows your **current task** (the top unchecked one) so the
+  thing you're meant to be doing stays glanceable (supports single-tasking).
+- Tasks persist across launches. The timer always stays the main, fixed element; the
+  list just grows the panel downward.
+
+**Text input (paste / dictation):** the overlay normally never activates the app (so
+it can't steal focus), but that also blocks ⌘V and tools like Wispr Flow. So the app
+**activates only while you're editing tasks** (opening the drawer or focusing the
+field), which makes paste, ⌘C/⌘V/⌘A, and dictation work normally. Click back into your
+editor and the overlay goes passive again.
 
 ## Focus Lock
 
