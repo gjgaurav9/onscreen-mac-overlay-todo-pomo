@@ -38,7 +38,26 @@ awareness, not urgency*.
   hover controls (play/pause/reset/skip), right-click menu. Accent color logic lives
   here (cool at rest, red only when `isUrgent`).
 - `Settings.swift` — `UserDefaults`-backed prefs (durations, auto-start, sound,
-  showSeconds, saved panel origin). 25/5/15 + long break every 4 are defaults only.
+  showSeconds, focusLock, saved panel origin). 25/5/15 + long break every 4 are defaults only.
+- `FocusLockController.swift` — Tier-1 Focus Lock (no permissions). Engaged by
+  `AppDelegate` via Combine when armed + running + focus phase + not suspended. On
+  drift (a non-allowed app activates), it `hide()`s that app and raises a full-screen
+  `LockOverlayView` shield at `CGShieldingWindowLevel()`. Pinned to the app that was
+  frontmost at engage (tracked as `lastForegroundApp` in AppDelegate); comms allowlist
+  always passes. Hold-to-unlock (3s) sets `engine.lockSuspended` → disengages.
+- `LockOverlayView.swift` — the friction interstitial (Return-to-focus primary action
+  + hold-to-unlock escape). `KeyableWindow` subclass lets the borderless shield become
+  key so it can receive the hold gesture.
+
+### Focus Lock design constraints (do not break)
+- **Soft friction, not a hard cage.** Default to intercept-and-default-back with an
+  always-available deliberate escape. Evidence (one sec/PNAS 2023; reactance; SDT;
+  nomophobia) says a no-escape lock backfires. The escape carries the benefit.
+- **Never block** force-quit (⌥⌘⎋) or the lock screen. Keep the comms allowlist.
+- macOS can't truly lock a user *into* another app without MDM/supervision — don't
+  promise that. We remove the switch's payoff (hide + overlay), we don't cage the OS.
+- Tier 2 (CGEventTap swallowing Cmd-Tab, needs Accessibility) was researched and
+  deliberately NOT built — Tier 1 was chosen to stay permission-free. See git history.
 
 ## Repo conventions (important)
 

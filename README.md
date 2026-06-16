@@ -32,8 +32,27 @@ Or run straight from source: `swift run -c release`.
 
 - **Hover** the widget → play/pause, reset, skip controls appear.
 - **Drag** anywhere on the body to reposition (the spot is remembered per launch).
-- **Right-click** → start/pause, reset, skip, quit.
+- **Right-click** → start/pause, reset, skip, toggle Focus Lock, quit.
 - It **never steals focus** — clicking it won't pull you out of your editor.
+
+## Focus Lock
+
+Right-click → **Focus Lock** (a 🔒 appears on the widget). While a focus phase is
+running, drifting to another app gets intercepted: the app you jumped to is hidden
+again and a calm full-screen overlay defaults you back to focus. To actually leave,
+**hold "Unlock" for 3 seconds** — a deliberate beat, not an unbreakable cage.
+
+What stays allowed: the app you were in when the phase started (pinned automatically),
+plus an emergency comms allowlist (Messages, FaceTime, Calendar, Reminders). It
+**never** blocks force-quit (⌥⌘⎋) or the lock screen.
+
+This is a deliberate design choice grounded in the research (see below): a soft
+friction interceptor beats a hard lock. macOS also can't truly imprison you in another
+app without MDM — so "lock" here means *remove the reflex's payoff + add a deliberate
+escape*, which is also what the evidence says works best (one sec / PNAS 2023: ~57%
+fewer distracting opens, and the easy back-out option carried the effect). A no-escape
+lock backfires via reactance (Brehm), undermined autonomy (SDT), and comms-separation
+anxiety. Tier 1 needs **zero system permissions**.
 
 ## How it works (the windowing trick)
 

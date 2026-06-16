@@ -58,10 +58,17 @@ struct TimerView: View {
                     .font(.system(size: 30, weight: .semibold, design: .rounded))
                     .monospacedDigit()
                     .foregroundStyle(.white)
-                Text(engine.phase.label)
-                    .font(.system(size: 9, weight: .semibold))
-                    .tracking(1.5)
-                    .foregroundStyle(accent.opacity(0.9))
+                HStack(spacing: 3) {
+                    if engine.focusLockEnabled {
+                        Image(systemName: "lock.fill")
+                            .font(.system(size: 7, weight: .bold))
+                            .foregroundStyle(accent.opacity(0.9))
+                    }
+                    Text(engine.phase.label)
+                        .font(.system(size: 9, weight: .semibold))
+                        .tracking(1.5)
+                        .foregroundStyle(accent.opacity(0.9))
+                }
                 if !engine.isRunning {
                     Text("paused")
                         .font(.system(size: 8, weight: .medium))
@@ -121,6 +128,8 @@ struct TimerView: View {
         Button(engine.isRunning ? "Pause" : "Start") { engine.toggle() }
         Button("Reset phase") { engine.reset() }
         Button("Skip to next") { engine.skip() }
+        Divider()
+        Toggle("Focus Lock", isOn: $engine.focusLockEnabled)
         Divider()
         Button("Quit Pomodoro") { NSApplication.shared.terminate(nil) }
     }

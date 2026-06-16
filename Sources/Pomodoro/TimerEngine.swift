@@ -26,6 +26,14 @@ final class TimerEngine: ObservableObject {
     /// Focus sessions completed today — feeds the progress dots and the long-break cadence.
     @Published private(set) var completedFocusSessions = 0
 
+    /// Whether Focus Lock is armed (a user toggle, persisted).
+    @Published var focusLockEnabled: Bool = Settings.shared.focusLock {
+        didSet { Settings.shared.focusLock = focusLockEnabled }
+    }
+    /// Set when the user deliberately unlocks mid-phase; suppresses the lock for the
+    /// rest of the current focus phase. Resets when the next focus phase begins.
+    @Published var lockSuspended = false
+
     private(set) var total: TimeInterval
     private var endDate: Date?
     private var ticker: Timer?
@@ -150,7 +158,9 @@ final class TimerEngine: ObservableObject {
 
     private func configureForPhase() {
         switch phase {
-        case .focus: total = settings.focusDuration
+        case .focus:
+            total = settings.focusDuration
+            lockSuspended = false   // each fresh focus phase re-arms the lock
         case .shortBreak: total = settings.shortBreakDuration
         case .longBreak: total = settings.longBreakDuration
         }

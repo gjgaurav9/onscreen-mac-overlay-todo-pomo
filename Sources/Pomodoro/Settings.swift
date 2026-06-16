@@ -17,6 +17,7 @@ final class Settings {
         static let autoStartFocus = "autoStartFocus"
         static let soundEnabled = "soundEnabled"
         static let showSeconds = "showSeconds"
+        static let focusLock = "focusLock"
         static let panelOriginX = "panelOriginX"
         static let panelOriginY = "panelOriginY"
     }
@@ -66,6 +67,12 @@ final class Settings {
     var showSeconds: Bool {
         get { defaults.bool(forKey: Key.showSeconds) }
         set { defaults.set(newValue, forKey: Key.showSeconds) }
+    }
+    /// "Focus Lock": during a running focus phase, impede switching to other apps.
+    /// Off by default — it's an invasive, opt-in commitment device.
+    var focusLock: Bool {
+        get { defaults.bool(forKey: Key.focusLock) }
+        set { defaults.set(newValue, forKey: Key.focusLock) }
     }
 
     /// Saved top-left origin of the overlay, or nil if never moved.
