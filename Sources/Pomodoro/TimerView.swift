@@ -1,45 +1,56 @@
 import SwiftUI
 
-/// The overlay's face: a smoothly depleting ring with the time inside it.
-/// Calm cool color at rest; warm/red only in the final stretch. Controls stay
-/// hidden until you hover, so during deep work the widget is near-static and
-/// non-magnetic (peripheral, per Calm Technology).
+/// The overlay's face: a smoothly depleting ring with the time inside it, plus an
+/// accordion task list that expands *below* the timer. The timer is always the main,
+/// fixed element; the to-do list is an optional drawer — it never covers the screen
+/// and never becomes a separate window.
 struct TimerView: View {
     @ObservedObject var engine: TimerEngine
-    @State private var hovering = false
+    @ObservedObject var todos: TodoStore
 
-    private let size: CGFloat = 150
+    @State private var hovering = false
+    @State private var showTodos = false
+    @State private var newTask = ""
+    @FocusState private var addFieldFocused: Bool
+
+    private let width: CGFloat = 190
     private let ringWidth: CGFloat = 9
 
     var body: some View {
-        ZStack {
-            // Dark, low-luminance backdrop — easy on the eyes for an always-on element.
+        VStack(spacing: 0) {
+            timerSection
+            tasksBar
+            if showTodos {
+                todoDrawer
+                    .transition(.opacity.combined(with: .move(edge: .top)))
+            }
+        }
+        .frame(width: width)
+        .background(
             RoundedRectangle(cornerRadius: 22, style: .continuous)
                 .fill(Color.black.opacity(0.82))
                 .overlay(
                     RoundedRectangle(cornerRadius: 22, style: .continuous)
                         .strokeBorder(Color.white.opacity(0.08), lineWidth: 1)
                 )
-
-            VStack(spacing: 8) {
-                ringWithTime
-                sessionDots
-            }
-            .padding(14)
-
-            if hovering {
-                controls
-                    .transition(.opacity)
-            }
-        }
-        .frame(width: size, height: size)
-        .onHover { h in
-            withAnimation(.easeInOut(duration: 0.15)) { hovering = h }
-        }
+        )
+        .onHover { h in withAnimation(.easeInOut(duration: 0.15)) { hovering = h } }
         .contextMenu { contextMenu }
     }
 
-    // MARK: - Ring + numeric
+    // MARK: - Timer (the main, always-visible element)
+
+    private var timerSection: some View {
+        VStack(spacing: 8) {
+            ringWithTime
+                .overlay(alignment: .bottom) {
+                    if hovering { controls.offset(y: 10) }
+                }
+            sessionDots
+        }
+        .padding(.top, 16)
+        .padding(.bottom, 10)
+    }
 
     private var ringWithTime: some View {
         ZStack {
@@ -79,7 +90,6 @@ struct TimerView: View {
         .frame(width: 96, height: 96)
     }
 
-    /// Dots showing progress toward the next long break — a gentle accumulation cue.
     private var sessionDots: some View {
         HStack(spacing: 5) {
             ForEach(0..<engine.cycleLength, id: \.self) { i in
@@ -91,23 +101,15 @@ struct TimerView: View {
         .frame(height: 6)
     }
 
-    // MARK: - Hover controls
-
     private var controls: some View {
-        VStack {
-            Spacer()
-            HStack(spacing: 18) {
-                iconButton(engine.isRunning ? "pause.fill" : "play.fill") { engine.toggle() }
-                iconButton("arrow.counterclockwise") { engine.reset() }
-                iconButton("forward.fill") { engine.skip() }
-            }
-            .padding(.vertical, 7)
-            .padding(.horizontal, 14)
-            .background(
-                Capsule().fill(Color.black.opacity(0.55))
-            )
-            .padding(.bottom, 10)
+        HStack(spacing: 18) {
+            iconButton(engine.isRunning ? "pause.fill" : "play.fill") { engine.toggle() }
+            iconButton("arrow.counterclockwise") { engine.reset() }
+            iconButton("forward.fill") { engine.skip() }
         }
+        .padding(.vertical, 7)
+        .padding(.horizontal, 14)
+        .background(Capsule().fill(Color.black.opacity(0.55)))
     }
 
     private func iconButton(_ symbol: String, action: @escaping () -> Void) -> some View {
@@ -119,6 +121,94 @@ struct TimerView: View {
                 .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
+    }
+
+    // MARK: - Tasks accordion
+
+    /// The always-present bar that toggles the drawer. Shows the current task when
+    /// collapsed, so the thing you're meant to be doing stays glanceable.
+    private var tasksBar: some View {
+        Button {
+            withAnimation(.easeInOut(duration: 0.18)) { showTodos.toggle() }
+            if showTodos { addFieldFocused = true }
+        } label: {
+            HStack(spacing: 6) {
+                Image(systemName: "checklist")
+                    .font(.system(size: 11, weight: .semibold))
+                    .foregroundStyle(.white.opacity(0.6))
+                Text(collapsedLabel)
+                    .font(.system(size: 11, weight: .medium))
+                    .foregroundStyle(.white.opacity(todos.current == nil ? 0.4 : 0.85))
+                    .lineLimit(1)
+                Spacer(minLength: 4)
+                if todos.remainingCount > 0 {
+                    Text("\(todos.remainingCount)")
+                        .font(.system(size: 10, weight: .semibold))
+                        .foregroundStyle(.white.opacity(0.55))
+                }
+                Image(systemName: showTodos ? "chevron.up" : "chevron.down")
+                    .font(.system(size: 9, weight: .bold))
+                    .foregroundStyle(.white.opacity(0.45))
+            }
+            .padding(.horizontal, 14)
+            .padding(.vertical, 9)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .overlay(alignment: .top) {
+            Rectangle().fill(Color.white.opacity(0.08)).frame(height: 1)
+        }
+    }
+
+    private var collapsedLabel: String {
+        todos.current?.title ?? "Add a task"
+    }
+
+    private var todoDrawer: some View {
+        VStack(spacing: 8) {
+            HStack(spacing: 6) {
+                Image(systemName: "plus")
+                    .font(.system(size: 10, weight: .bold))
+                    .foregroundStyle(.white.opacity(0.5))
+                TextField("New task", text: $newTask)
+                    .textFieldStyle(.plain)
+                    .font(.system(size: 12))
+                    .foregroundStyle(.white)
+                    .focused($addFieldFocused)
+                    .onSubmit {
+                        todos.add(newTask)
+                        newTask = ""
+                        addFieldFocused = true   // keep focus for rapid entry
+                    }
+            }
+            .padding(.horizontal, 10)
+            .padding(.vertical, 7)
+            .background(RoundedRectangle(cornerRadius: 8).fill(Color.white.opacity(0.06)))
+
+            if !todos.items.isEmpty {
+                ScrollView {
+                    VStack(spacing: 2) {
+                        ForEach(todos.items) { item in
+                            TodoRow(item: item,
+                                    accent: accent,
+                                    onToggle: { todos.toggle(item.id) },
+                                    onDelete: { todos.remove(item.id) })
+                        }
+                    }
+                }
+                .frame(maxHeight: 170)
+
+                if todos.items.contains(where: { $0.done }) {
+                    Button("Clear completed") { todos.clearCompleted() }
+                        .buttonStyle(.plain)
+                        .font(.system(size: 10, weight: .medium))
+                        .foregroundStyle(.white.opacity(0.4))
+                }
+            }
+        }
+        .padding(.horizontal, 12)
+        .padding(.top, 4)
+        .padding(.bottom, 14)
     }
 
     // MARK: - Right-click menu
@@ -136,20 +226,58 @@ struct TimerView: View {
 
     // MARK: - Color
 
-    /// Cool/calm at rest, distinct hue for breaks, red only in the final stretch.
     private var accent: Color {
         if engine.isUrgent {
-            // Last 2 min of focus: amber → red as the deadline closes in (goal gradient).
             let t = engine.remaining <= 60 ? 1.0 : 0.0
             return Color(red: 1.0, green: 0.55 - 0.35 * t, blue: 0.25 - 0.25 * t)
         }
         switch engine.phase {
-        case .focus:
-            return Color(red: 0.32, green: 0.74, blue: 0.90)   // calm teal/blue
-        case .shortBreak:
-            return Color(red: 0.40, green: 0.82, blue: 0.55)   // restful green
-        case .longBreak:
-            return Color(red: 0.55, green: 0.72, blue: 0.95)   // soft indigo
+        case .focus:     return Color(red: 0.32, green: 0.74, blue: 0.90)
+        case .shortBreak: return Color(red: 0.40, green: 0.82, blue: 0.55)
+        case .longBreak:  return Color(red: 0.55, green: 0.72, blue: 0.95)
         }
+    }
+}
+
+/// One task row: checkbox + title, with a delete affordance on hover.
+private struct TodoRow: View {
+    let item: TodoItem
+    let accent: Color
+    let onToggle: () -> Void
+    let onDelete: () -> Void
+
+    @State private var hovering = false
+
+    var body: some View {
+        HStack(spacing: 8) {
+            Button(action: onToggle) {
+                Image(systemName: item.done ? "checkmark.circle.fill" : "circle")
+                    .font(.system(size: 13))
+                    .foregroundStyle(item.done ? accent : Color.white.opacity(0.4))
+            }
+            .buttonStyle(.plain)
+
+            Text(item.title)
+                .font(.system(size: 12))
+                .foregroundStyle(item.done ? Color.white.opacity(0.35) : Color.white.opacity(0.9))
+                .strikethrough(item.done, color: .white.opacity(0.35))
+                .lineLimit(1)
+
+            Spacer(minLength: 2)
+
+            if hovering {
+                Button(action: onDelete) {
+                    Image(systemName: "xmark")
+                        .font(.system(size: 9, weight: .bold))
+                        .foregroundStyle(.white.opacity(0.4))
+                }
+                .buttonStyle(.plain)
+            }
+        }
+        .padding(.horizontal, 6)
+        .padding(.vertical, 4)
+        .background(RoundedRectangle(cornerRadius: 6).fill(Color.white.opacity(hovering ? 0.05 : 0)))
+        .contentShape(Rectangle())
+        .onHover { hovering = $0 }
     }
 }

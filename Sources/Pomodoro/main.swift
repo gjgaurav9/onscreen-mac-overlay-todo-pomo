@@ -4,6 +4,7 @@ import Combine
 
 final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     let engine = TimerEngine()
+    let todos = TodoStore()
     var panel: OverlayPanel!
     private lazy var lockController = FocusLockController(engine: engine)
 
@@ -11,14 +12,19 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     private var lastForegroundApp: NSRunningApplication?
     private var cancellables = Set<AnyCancellable>()
 
-    private let panelSize = NSSize(width: 150, height: 150)
+    /// Top-left anchor of the panel. The accordion grows downward, so we keep the
+    /// timer's top edge fixed rather than its bottom.
+    private var anchorTopLeft: NSPoint?
     private let margin: CGFloat = 24
 
     func applicationDidFinishLaunching(_ notification: Notification) {
-        let hosting = NSHostingView(rootView: TimerView(engine: engine))
+        // A hosting controller with .preferredContentSize makes the borderless panel
+        // resize to fit the SwiftUI content as the to-do drawer opens and closes.
+        let controller = NSHostingController(rootView: TimerView(engine: engine, todos: todos))
+        controller.sizingOptions = [.preferredContentSize]
 
-        panel = OverlayPanel(contentRect: NSRect(origin: .zero, size: panelSize))
-        panel.contentView = hosting
+        panel = OverlayPanel(contentRect: NSRect(x: 0, y: 0, width: 190, height: 190))
+        panel.contentViewController = controller
         panel.delegate = self
 
         positionPanel()
@@ -67,25 +73,36 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         }
     }
 
-    /// Restore the saved position, or default to the top-right corner below the menu bar.
+    /// Restore the saved top-left, or default to the top-right corner below the menu bar.
     private func positionPanel() {
         guard let screen = NSScreen.main else { return }
         let visible = screen.visibleFrame
+        let size = panel.frame.size
 
-        let origin: NSPoint
+        let topLeft: NSPoint
         if let saved = Settings.shared.panelOrigin,
-           visible.contains(NSPoint(x: saved.x + panelSize.width / 2,
-                                    y: saved.y + panelSize.height / 2)) {
-            origin = NSPoint(x: saved.x, y: saved.y)
+           visible.contains(NSPoint(x: saved.x + 10, y: saved.y - 10)) {
+            topLeft = NSPoint(x: saved.x, y: saved.y)
         } else {
-            origin = NSPoint(x: visible.maxX - panelSize.width - margin,
-                             y: visible.maxY - panelSize.height - margin)
+            topLeft = NSPoint(x: visible.maxX - size.width - margin, y: visible.maxY - margin)
         }
-        panel.setFrameOrigin(origin)
+        anchorTopLeft = topLeft
+        panel.setFrameTopLeftPoint(topLeft)
     }
 
     func windowDidMove(_ notification: Notification) {
-        Settings.shared.panelOrigin = panel.frame.origin
+        let topLeft = NSPoint(x: panel.frame.minX, y: panel.frame.maxY)
+        anchorTopLeft = topLeft
+        Settings.shared.panelOrigin = topLeft
+    }
+
+    /// When the drawer opens/closes the panel resizes; keep the top edge pinned so it
+    /// grows downward instead of shifting the timer.
+    func windowDidResize(_ notification: Notification) {
+        guard let topLeft = anchorTopLeft else { return }
+        if panel.frame.minX != topLeft.x || panel.frame.maxY != topLeft.y {
+            panel.setFrameTopLeftPoint(topLeft)
+        }
     }
 }
 

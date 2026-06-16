@@ -33,7 +33,17 @@ Or run straight from source: `swift run -c release`.
 - **Hover** the widget → play/pause, reset, skip controls appear.
 - **Drag** anywhere on the body to reposition (the spot is remembered per launch).
 - **Right-click** → start/pause, reset, skip, toggle Focus Lock, quit.
-- It **never steals focus** — clicking it won't pull you out of your editor.
+- It **never steals focus** — clicking it won't pull you out of your editor (the
+  to-do field can still take typing while your app stays the active one).
+
+## Tasks (accordion)
+
+Click the **task bar** under the timer to expand a small to-do drawer *below* the
+ring — never a full screen, never a separate window. Type a task and hit Enter; check
+items off; delete on hover. When collapsed, the bar shows your **current task** (the
+first unchecked one) so the thing you're meant to be doing stays glanceable — which
+supports single-tasking. Tasks persist across launches. The timer always stays the
+main, fixed element; the list just grows the panel downward.
 
 ## Focus Lock
 

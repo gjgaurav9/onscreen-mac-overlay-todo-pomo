@@ -38,7 +38,15 @@ awareness, not urgency*.
   hover controls (play/pause/reset/skip), right-click menu. Accent color logic lives
   here (cool at rest, red only when `isUrgent`).
 - `Settings.swift` — `UserDefaults`-backed prefs (durations, auto-start, sound,
-  showSeconds, focusLock, saved panel origin). 25/5/15 + long break every 4 are defaults only.
+  showSeconds, focusLock, saved panel **top-left**). 25/5/15 + long break every 4 are defaults only.
+- `TodoStore.swift` — tiny `ObservableObject` task list (`[TodoItem]` JSON-persisted in
+  `UserDefaults`). `current` = first unfinished task (shown collapsed for single-tasking).
+- The to-do list is an **accordion drawer inside the same panel** (in `TimerView`), not a
+  window — it grows the panel downward. `AppDelegate` uses an `NSHostingController` with
+  `.preferredContentSize` so the borderless panel auto-resizes, and pins `anchorTopLeft`
+  in `windowDidResize` so the timer's top edge stays put. The panel now `canBecomeKey`
+  (so the task field can type) but stays `.nonactivatingPanel`, so it never activates the
+  app — your real app remains frontmost.
 - `FocusLockController.swift` — Tier-1 Focus Lock (no permissions). Engaged by
   `AppDelegate` via Combine when armed + running + focus phase + not suspended. On
   drift (a non-allowed app activates), it `hide()`s that app and raises a full-screen
