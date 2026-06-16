@@ -269,7 +269,9 @@ private struct TodoRow: View {
     @State private var hovering = false
 
     var body: some View {
-        HStack(spacing: 8) {
+        // Top-aligned so the checkbox and delete stay beside the first line when a
+        // long task wraps into a tall block (otherwise they get centered far down it).
+        HStack(alignment: .top, spacing: 8) {
             Button(action: onToggle) {
                 Image(systemName: item.done ? "checkmark.circle.fill" : "circle")
                     .font(.system(size: 13))
