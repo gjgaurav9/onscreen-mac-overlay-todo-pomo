@@ -16,6 +16,34 @@ Native Swift + AppKit/SwiftUI. No Electron, no menu-bar clutter, no Dock icon.
    ╰───────────╯
 ```
 
+## Features at a glance
+
+**Timer**
+- Always-on-top floating overlay above any app, all Spaces, and fullscreen windows.
+- Pomodoro cycle: focus → short break → long break (every 4th focus), auto-cycling.
+- Smoothly depleting progress ring with `mm:ss` inside; calm cool color at rest, red
+  only in the final 1–2 minutes.
+- Session dots show progress toward the next long break.
+- Hover for play/pause, reset, skip; right-click menu for the same + Focus Lock + quit.
+- Drag anywhere to reposition; position is remembered. Soft chime at each boundary.
+- Never steals focus; no Dock icon, no menu-bar clutter.
+
+**To-do list (accordion under the timer)**
+- Expand/collapse a small task drawer below the ring — never full-screen, never a
+  separate window; the timer stays the main element and the panel grows downward.
+- Add tasks (Enter), check off, delete on hover, "Clear completed".
+- **Drag to reorder** by priority; **tap a task** to promote it to current and collapse.
+- Collapsed bar shows your **current task** (top unchecked) for single-tasking.
+- **Hover a task to see its full text** (wraps); truncated to one line otherwise.
+- Paste (⌘V/⌘C/⌘X/⌘A) and dictation (e.g. Wispr Flow) work in the task field.
+- Tasks persist across launches.
+
+**Focus Lock (opt-in)**
+- While a focus phase runs, switching to a non-allowed app is intercepted: it's hidden
+  and a calm overlay defaults you back, with a deliberate **hold-to-unlock (3s)** escape.
+- Pinned to the app you started in + a comms allowlist; never blocks force-quit or the
+  lock screen. Zero system permissions.
+
 ## Run it
 
 ```bash
@@ -80,8 +108,16 @@ anxiety. Tier 1 needs **zero system permissions**.
 `OverlayPanel` is a borderless, non-activating `NSPanel` at `.floating` level with
 `collectionBehavior = [.canJoinAllSpaces, .stationary, .fullScreenAuxiliary]`.
 That combination is what lets it sit on top of *any* app, follow you across Spaces,
-and ride over fullscreen windows — while `.nonactivatingPanel` + `canBecomeKey =
-false` keep your real app focused. The app runs as an `.accessory` (no Dock icon).
+and ride over fullscreen windows. The `.nonactivatingPanel` style keeps your real app
+the active one even when the overlay is clicked, so it never pulls focus during normal
+use. The app runs as an `.accessory` (no Dock icon).
+
+The panel *can* become key (`canBecomeKey = true`) so the to-do text field accepts
+typing — but because it's non-activating, becoming key doesn't activate the app. The
+one exception is editing tasks: we deliberately call `NSApp.activate` while the drawer
+is open so paste and dictation land in the field, then go passive again afterward.
+The panel auto-sizes to its SwiftUI content via an `NSHostingController` with
+`.preferredContentSize`, with the top-left pinned so the accordion grows downward.
 
 ## Defaults
 
