@@ -278,15 +278,17 @@ private struct TodoRow: View {
             .buttonStyle(.plain)
 
             // Tapping the title "chooses" this task (promotes it + collapses the drawer).
+            // Truncated when idle; on hover it wraps to show the full text.
             Text(item.title)
                 .font(.system(size: 12))
                 .foregroundStyle(item.done ? Color.white.opacity(0.35) : Color.white.opacity(0.9))
                 .strikethrough(item.done, color: .white.opacity(0.35))
-                .lineLimit(1)
+                .lineLimit(hovering ? nil : 1)
+                .fixedSize(horizontal: false, vertical: true)
+                .multilineTextAlignment(.leading)
+                .frame(maxWidth: .infinity, alignment: .leading)
                 .contentShape(Rectangle())
                 .onTapGesture(perform: onChoose)
-
-            Spacer(minLength: 2)
 
             if hovering {
                 Image(systemName: "line.3.horizontal")
