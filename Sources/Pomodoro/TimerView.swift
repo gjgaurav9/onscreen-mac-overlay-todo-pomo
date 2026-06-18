@@ -16,12 +16,21 @@ struct TimerView: View {
     @State private var showTodos = false
     @State private var newTask = ""
     @State private var dragging: TodoItem?
+    @State private var minimized = false
+    @State private var barHover = false
     @FocusState private var addFieldFocused: Bool
 
     private let width: CGFloat = 190
     private let ringWidth: CGFloat = 9
 
     var body: some View {
+        Group {
+            if minimized { minimizedBar } else { fullPanel }
+        }
+        .contextMenu { contextMenu }
+    }
+
+    private var fullPanel: some View {
         VStack(spacing: 0) {
             timerSection
             tasksBar
@@ -39,8 +48,50 @@ struct TimerView: View {
                         .strokeBorder(Color.white.opacity(0.08), lineWidth: 1)
                 )
         )
+        .overlay(alignment: .topTrailing) {
+            if hovering { minimizeButton }
+        }
         .onHover { h in withAnimation(.easeInOut(duration: 0.15)) { hovering = h } }
-        .contextMenu { contextMenu }
+    }
+
+    /// Collapsed form: a thin, phase-tinted line. Click to expand the full app; drag
+    /// (on the body) to reposition. Stays calm and tiny when you're not using it.
+    private var minimizedBar: some View {
+        ZStack {
+            RoundedRectangle(cornerRadius: 9, style: .continuous)
+                .fill(Color.black.opacity(0.7))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 9, style: .continuous)
+                        .strokeBorder(Color.white.opacity(0.08), lineWidth: 1)
+                )
+            Capsule()
+                .fill(accent.opacity(barHover ? 1 : 0.85))
+                .frame(width: barHover ? 72 : 60, height: 4)
+        }
+        .frame(width: 100, height: 16)
+        .contentShape(Rectangle())
+        .onHover { h in withAnimation(.easeInOut(duration: 0.15)) { barHover = h } }
+        .onTapGesture { withAnimation(.easeInOut(duration: 0.2)) { minimized = false } }
+        .help("Click to expand")
+    }
+
+    private var minimizeButton: some View {
+        Button {
+            withAnimation(.easeInOut(duration: 0.2)) {
+                showTodos = false
+                minimized = true
+            }
+        } label: {
+            Image(systemName: "minus")
+                .font(.system(size: 9, weight: .black))
+                .foregroundStyle(.white.opacity(0.7))
+                .frame(width: 18, height: 18)
+                .background(Circle().fill(Color.black.opacity(0.45)))
+                .contentShape(Circle())
+        }
+        .buttonStyle(.plain)
+        .padding(7)
+        .help("Minimize")
     }
 
     // MARK: - Timer (the main, always-visible element)
@@ -232,6 +283,13 @@ struct TimerView: View {
 
     @ViewBuilder
     private var contextMenu: some View {
+        Button(minimized ? "Expand" : "Minimize") {
+            withAnimation(.easeInOut(duration: 0.2)) {
+                if !minimized { showTodos = false }
+                minimized.toggle()
+            }
+        }
+        Divider()
         Button(engine.isRunning ? "Pause" : "Start") { engine.toggle() }
         Button("Reset phase") { engine.reset() }
         Button("Skip to next") { engine.skip() }

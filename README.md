@@ -26,6 +26,8 @@ Native Swift + AppKit/SwiftUI. No Electron, no menu-bar clutter, no Dock icon.
 - Session dots show progress toward the next long break.
 - Hover for play/pause, reset, skip; right-click menu for the same + Focus Lock + quit.
 - Drag anywhere to reposition; position is remembered. Soft chime at each boundary.
+- **Minimize** (hover → `–` top-right, or right-click → Minimize) collapses the whole
+  app to a thin phase-tinted line; click the line to expand it back.
 - Never steals focus; no Dock icon, no menu-bar clutter.
 
 **To-do list (accordion under the timer)**
